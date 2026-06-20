@@ -61,6 +61,61 @@ Documented hallucination patterns from LLM-generated Leeds United player bios. T
 
 Built `validate_bio.py` — a 9-check hard-stop validator that billresearch MUST run before reporting complete. Catches: duplicate players, fabricated parents, fabricated death dates, stats mismatch, orphaned records, invalid honour_type, missing sections, duplicate entries, "gold standard" template notes.
 
+## Case Study: Terry Yorath (First Successful 4-Phase Run, June 2026)
+
+### Result: ✅ PASSED on first try
+
+First bio produced under the new 4-phase workflow (SCRAPE → WRITE → DB INSERT → VALIDATE). All 9 validator checks passed, exit 0, no manual fixes needed.
+
+### What Worked
+
+| Decision Tree | Input | Output | Correct? |
+|---|---|---|---|
+| Death | Wikipedia has "Died: 7 January 2026" | date_of_death = 2026-01-07, Section 12 written | ✅ |
+| Parents | No parent field in Wikipedia infobox | Both parents = "Unknown" | ✅ |
+| Clubs | Transfermarkt career table scraped | All 6 clubs matched exactly | ✅ |
+| Stats | Transfermarkt = ground truth | DB totals = MD §6a totals (399/18) | ✅ |
+| Duplicates | GET by last_name before POST | 1 row for Yorath, no duplicates | ✅ |
+
+### Key Validation
+
+The death date was independently verified against Guardian, Telegraph, BBC, and NYT Athletic obituaries — all confirmed 7 January 2026. This proves the decision tree works in both directions: Eddie Gray (alive, no "Died" field → correctly null) and Terry Yorath (dead, HAS "Died" field → correctly captured).
+
+### Why This Matters
+
+This is the proof point that the decision-tree methodology works for autonomous operation. Previous runs (Radebe, Gray) required extensive manual cleanup. Yorath required zero.
+
+## Case Study: Full-Player Audit (6 Players, June 2026)
+
+### Audit Process
+1. Run `validate_bio.py --player-id <ID> --md-file <file>` for every player
+2. Spot-check death dates against Wikipedia/obituaries (most dangerous field)
+3. Spot-check parent names against Wikipedia infoboxes
+4. Verify stats reconciliation (DB competitive totals = markdown §6a)
+5. Fix all issues, re-run validator until all pass
+
+### Issues Found and Fixed
+
+| Player | Issue | Fix |
+|---|---|---|
+| John Sheridan (id=3) | Nationality "English" in DB | Changed to "Irish" — Sheridan represented Republic of Ireland internationally. Born in England but qualifies as Irish. |
+| John Sheridan (id=3) | Stats mismatch (MD 622 vs DB 654) | Updated markdown CAREER TOTAL to match DB |
+| Ethan Ampadu (id=1) | Stats mismatch (MD 251 vs DB 243) | Updated markdown CAREER TOTAL to match DB |
+| Ethan Ampadu (id=1) | "Gold standard" template text | Removed, replaced with standard template note |
+| John Charles (id=2) | "Gold standard" template text | Removed from closing line |
+
+### New Hallucination Pattern: Wrong Nationality
+
+Sheridan was marked "English" in the DB but he represented the Republic of Ireland internationally (born in Stretford, England but qualified through heritage). This is a new pattern — the model correctly identified birthplace (England) but assigned the wrong international nationality. **Mitigation**: nationality should reflect the national team the player represented, not birth country. Check the international career section for the country.
+
+### Verified Parent Names (safe to keep)
+
+| Player | Parent | Name | Source |
+|---|---|---|---|
+| Ethan Ampadu | Father | Patrick Kwame Ampadu | Wikipedia — has own Wikipedia page |
+| John Charles | Father | Edward "Ned" Charles (1898-1972) | Dictionary of Welsh Biography |
+| John Charles | Mother | Lily Charles née Burridge (1902-1984) | Dictionary of Welsh Biography |
+
 ## Verification Protocol
 
 After any AI-generated bio, run this checklist:

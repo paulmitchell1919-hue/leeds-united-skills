@@ -175,6 +175,7 @@ When an LLM agent (e.g. billresearch) writes biographies or other research conte
 - **Plausible-but-wrong career details** (transfer fees, dates, caps that are close to reality but incorrect)
 - **Fabricating parent names** (e.g., "Johannes Radebe" and "Emily Radebe" — never documented in scraped sources)
 - **Fabricating death dates for living players** (e.g., Eddie Gray given date_of_death=2024-11-17 while alive)
+- **Wrong nationality** (e.g., John Sheridan marked "English" but he represented Republic of Ireland internationally — nationality should reflect the national team represented, not birth country)
 - **Creating duplicate player records** (e.g., 3 rows for Eddie Gray with contradictory death data)
 - **Including `is_competitive` in `player_stats` POST payloads** (violates generated column constraint — `428C9` error)
 - **Using `honour_type='international'`** (violates check constraint — only `'club'` and `'individual'` allowed)
@@ -190,6 +191,7 @@ After the agent completes the research and writes the markdown file, run a secon
 
 - [references/fact-checking-lessons.md](references/fact-checking-lessons.md) for documented cases.
 - [references/anti-hallucination-decision-trees.md](references/anti-hallucination-decision-trees.md) — pre-generation decision trees (prevention layer) vs validate_bio.py (detection layer). Use these trees during Phase 2 WRITE to stop fabrication before it happens.
+- [references/validator-maintenance.md](references/validator-maintenance.md) — validate_bio.py bugs found during real audits, their fixes, and the full-player audit methodology. Read before modifying the validator.
 
 ### Supabase Auth — Use Helper Scripts, NEVER Raw Curl
 
@@ -222,6 +224,20 @@ python3 ~/.hermes/skills/research/leeds-united-knowledge-base/scripts/verify_pla
 - Prefer official club sources, reputable news (BBC, Guardian, Yorkshire Evening Post, The Athletic), and football databases when needed for cross-check.
 - Flag uncertain facts explicitly in `notes`.
 - Maintain stable slugs for file paths and IDs; do not retitle lightly.
+
+## Full-Player Audit (when asked to verify all players are accurate)
+
+When the user asks to verify all existing players are correct:
+
+1. **Run validator on all players** — query all player IDs, run `validate_bio.py` on each
+2. **Independently spot-check dangerous fields** — the validator checks DB↔markdown consistency but CANNOT verify against reality:
+   - Death dates: `web_search "[player name] footballer death"` → confirm against Wikipedia/obituaries
+   - Parent names: check if Wikipedia infobox has parents/family field (if not → should be "Unknown")
+   - Nationality: check which national team they represented (not birth country)
+3. **Fix issues** in DB (supabase_helper.py) or markdown (patch), then re-run validator
+4. **All players must pass** (exit 0) before reporting complete
+
+See [references/validator-maintenance.md](references/validator-maintenance.md) for the full audit methodology and known validator bugs.
 
 ## Pitfalls
 

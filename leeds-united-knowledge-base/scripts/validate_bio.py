@@ -251,8 +251,8 @@ class BioValidator:
         md_apps = None
         md_goals = None
         if self.md_content:
-            # Strategy 1: Find CAREER TOTAL line and extract apps/goals
-            total_line = re.search(r'CAREER\s+TOTAL.*?\*?\*?(\d+)\s*[/]\s*(\d+)', self.md_content, re.IGNORECASE)
+            # Strategy 1: Find CAREER TOTAL line (any case) and extract apps/goals
+            total_line = re.search(r'(?:CAREER|career|Career)\s*(?:TOTAL|Total|total).*?\*{0,2}(\d+)\s*[/]\s*(\d+)', self.md_content, re.IGNORECASE)
             if total_line:
                 md_apps = int(total_line.group(1))
                 md_goals = int(total_line.group(2))

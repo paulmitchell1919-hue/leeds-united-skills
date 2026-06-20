@@ -57,6 +57,18 @@ For each honour you plan to list:
 └─ NO → Do NOT include it. Invented honours are a documented hallucination pattern.
 ```
 
+### Nationality (Section 1 / DB players.nationality)
+```
+What national team did the player represent internationally?
+├─ Clear answer from Wikipedia/Transfermarkt → Use that nationality
+├─ Played for country of birth only → Use birth nationality
+└─ Born in Country A but represented Country B (e.g., Sheridan: born England, played for Ireland)
+   → Use the REPRESENTED nationality, not birth nationality
+   → Note birth country separately in place_of_birth
+```
+
+Real example: John Sheridan was born in Stretford, England but represented Republic of Ireland internationally. DB nationality should be "Irish", not "English".
+
 ### Tournament Results (Section 7)
 ```
 For each tournament result:
@@ -78,6 +90,7 @@ For each tournament result:
 | Wrong honour_type | `'international'` (violates constraint) | Only `'club'` or `'individual'` |
 | Including is_competitive in POST | Triggers 428C9 error | Omit from POST — it's generated |
 | "Gold standard" template note | Propagates across bios | Every bio just follows the standard template |
+| Wrong nationality | Sheridan marked "English" but represented Ireland | Use international team nationality, not birth country |
 
 ## Integration with validate_bio.py
 
