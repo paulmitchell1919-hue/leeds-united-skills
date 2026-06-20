@@ -414,9 +414,12 @@ For each club you plan to list:
 
 **Stats (Section 6a):**
 ```
-Transfermarkt career table shows apps/goals per competition.
-  Copy these EXACTLY. Do not round, adjust, or "reconcile" with Wikipedia.
-  If Transfermarkt and Wikipedia disagree, use Transfermarkt and note the discrepancy.
+Can you scrape the Transfermarkt career stats page?
+├─ YES → Copy the apps/goals EXACTLY per season
+└─ NO (Transfermarkt blocks scraping) → Use the Wikipedia career statistics TABLE instead.
+    Insert ONE row per club (not per season) with the per-club totals from Wikipedia.
+    Do NOT invent per-season numbers — if Wikipedia only gives per-club totals, use those.
+    Fabricated per-season stats that "look right" are the #1 hallucination pattern for stats.
 ```
 
 **Honours (Section 9):**
