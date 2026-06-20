@@ -188,7 +188,8 @@ After the agent completes the research and writes the markdown file, run a secon
 4. For each honour in section 9, verify it's real
 5. Flag and correct any fabricated claims before entering data into Supabase
 
-See [references/fact-checking-lessons.md](references/fact-checking-lessons.md) for documented cases.
+- [references/fact-checking-lessons.md](references/fact-checking-lessons.md) for documented cases.
+- [references/anti-hallucination-decision-trees.md](references/anti-hallucination-decision-trees.md) — pre-generation decision trees (prevention layer) vs validate_bio.py (detection layer). Use these trees during Phase 2 WRITE to stop fabrication before it happens.
 
 ### Supabase Auth — Use Helper Scripts, NEVER Raw Curl
 

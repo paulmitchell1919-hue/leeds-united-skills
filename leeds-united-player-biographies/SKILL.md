@@ -34,14 +34,14 @@ Two gold-standard reference files exist at the output path below. ALWAYS read at
 This project has TWO data layers. Both must be maintained per player:
 
 1. **CONTENT LAYER — Markdown files** (this skill's main focus)
-   - Human-readable narrative bios at `/Volumes/projects-1/leeds/research/leeds_players/`
+   - Human-readable narrative bios at `/mnt/nas/leeds/research/leeds_players/`
    - Used for: "On This Day" social posts (Facebook/X), eventual website articles, human reading
    - The 12-section template below governs these files
 
 2. **QUERY LAYER — Supabase (PostgreSQL)**
    - Cloud-hosted structured database for reliable cross-player queries
    - Used for: "How many players featured in 1947?", "How many goals did Fowler score for Leeds?", season-by-season lookups
-   - Credentials in `/Volumes/projects-1/leeds/.env` (see Supabase Setup below)
+   - Credentials in `/mnt/nas/leeds/.env` (see Supabase Setup below)
    - Schema: TBD — will be designed and added as a reference file before Bill starts entering structured data
    - When the schema exists, each player bio requires BOTH the markdown file AND a Supabase data entry
 
@@ -49,7 +49,7 @@ Markdown alone cannot reliably answer cross-player queries (e.g. "who played in 
 
 ## Supabase Setup
 
-Credentials live in `/Volumes/projects-1/leeds/.env` (gitignored). Variables:
+Credentials live in `/mnt/nas/leeds/.env` (gitignored). Variables:
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (REST API access)
 - `SUPABASE_DB_HOST`, `SUPABASE_DB_PORT`, `SUPABASE_DB_NAME`, `SUPABASE_DB_USER`, `SUPABASE_DB_PASSWORD` (direct PostgreSQL access)
 
@@ -59,9 +59,8 @@ See [references/supabase-data-layer.md](references/supabase-data-layer.md) for s
 
 ## Published Location
 
-This skill is published to GitHub (private): `Mitch-TechWorks-Skills/Leeds-United-Skills`
-- Install: `npx skills add https://github.com/Mitch-TechWorks-Skills/Leeds-United-Skills --skill leeds-united-player-biographies`
-- Pack source on NAS: `/Volumes/projects-1/skills/Leeds-United-Skills/`
+This skill is published to GitHub: `paulmitchell1919-hue/leeds-united-skills`
+- Install: `npx skills add https://github.com/paulmitchell1919-hue/leeds-united-skills --skill leeds-united-player-biographies`
 - Local runtime copy: `~/.hermes/skills/research/leeds-united-player-biographies/`
 
 ## Output Location (Content Layer)
@@ -69,7 +68,7 @@ This skill is published to GitHub (private): `Mitch-TechWorks-Skills/Leeds-Unite
 All player bio markdown files are saved to:
 
 ```
-/Volumes/projects-1/leeds/research/leeds_players/
+/mnt/nas/leeds/research/leeds_players/
 ```
 
 This is on the NAS and visible in Finder. DO NOT save anywhere else.
@@ -90,8 +89,8 @@ firstname_surname.md
 
 Before starting any new bio, read one of these to match structure and depth:
 
-1. `/Volumes/projects-1/leeds/research/leeds_players/ethan_ampadu.md` — modern player example (still active)
-2. `/Volumes/projects-1/leeds/research/leeds_players/john_charles.md` — historical player example (deceased, extensive career, post-retirement)
+1. `/mnt/nas/leeds/research/leeds_players/ethan_ampadu.md` — modern player example (still active)
+2. `/mnt/nas/leeds/research/leeds_players/john_charles.md` — historical player example (deceased, extensive career, post-retirement)
 
 ## Required Template Structure (12 Sections)
 
@@ -272,7 +271,7 @@ Every player bio MUST also have its structured data entered into the Supabase da
 
 ### Connection
 
-Credentials are in: `/Volumes/projects-1/leeds/.env`
+Credentials are in: `/mnt/nas/leeds/.env`
 
 Key values:
 - `SUPABASE_URL` — REST API endpoint
