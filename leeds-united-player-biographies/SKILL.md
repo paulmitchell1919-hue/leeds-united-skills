@@ -342,56 +342,180 @@ See the Ampadu (player_id=1) and Charles (player_id=2) entries for reference. Ev
 - "Who played in season Y": filter player_stats by season + club_id=1 + is_competitive=true, distinct player_ids
 - "Player X total career stats": filter player_stats by player_id + is_competitive=true, group by club_id
 
-## Common Pitfalls
+## MANDATORY 4-PHASE WORKFLOW (follow this EXACT order, every time)
 
-1. **Mixing friendlies into competitive totals.** This is the #1 rule: friendlies are DOCUMENTED but ISOLATED. Never add a friendly appearance to a competitive career total.
+### Phase 1 — SCRAPE (gather source material, nothing else)
 
-2. **Only covering the Leeds career.** The bio covers the COMPLETE career — every club, every loan, before and after Leeds. Leeds is not the only chapter.
+You MUST scrape these pages before writing ANYTHING. No exceptions.
 
-3. **Inventing parent names or personal details.** If a name isn't in reliable sources, say so. "Name not publicly documented" is the correct response, not a guess from a random blog.
+**Step 1.1:** Scrape the FULL Wikipedia player page via Firecrawl:
+```
+POST http://127.0.0.1:3002/v1/scrape
+{"url": "https://en.wikipedia.org/wiki/PLAYER_NAME", "formats": ["markdown"], "onlyMainContent": true}
+```
 
-4. **Skipping the Sources section.** Every file ends with full source URLs. This is how the project stays verifiable across hundreds of players.
+**Step 1.2:** Scrape the Transfermarkt career stats page:
+```
+POST http://127.0.0.1:3002/v1/scrape
+{"url": "https://www.transfermarkt.com/PLAYER_SLUG/leistungsdaten/spieler/ID", "formats": ["markdown"], "onlyMainContent": true}
+```
+This is your GROUND TRUTH for clubs and stats. If a club is not in the Transfermarkt career table, it does not go in the bio.
 
-5. **Using more than 3 photos.** Hard limit of 3. Quality over quantity.
+**Step 1.3:** Scrape at least 1 more source (pick the most relevant):
+- Club Hall of Fame page
+- BBC Sport profile
+- RSSSF archive page
+- National federation page
 
-6. **Forgetting post-retirement or death sections.** For older players these are often the most interesting parts. Research thoroughly — what did they do after football? If they've died, how and when?
+**Step 1.4:** Write a structured fact sheet to a temp file. For EACH field, note the source URL:
+```
+FULL_NAME: [value] — source: [URL]
+DATE_OF_BIRTH: [value] — source: [URL]
+PLACE_OF_BIRTH: [value] — source: [URL]
+FATHER_NAME: [value or UNKNOWN] — source: [URL or "not in any scraped source"]
+MOTHER_NAME: [value or UNKNOWN] — source: [URL or "not in any scraped source"]
+IS_DEAD: [yes/no] — source: [URL]
+DATE_OF_DEATH: [value or N/A] — source: [URL or "not documented"]
+CLUBS: [list from Transfermarkt ONLY] — source: [Transfermarkt URL]
+...
+```
 
-7. **Ignoring source discrepancies.** When Transfermarkt says 150 apps and Wikipedia says 155, document both and explain the difference. Don't silently pick one.
+If a field is not in any scraped source, write UNKNOWN. Do not search further. Do not infer. UNKNOWN is the correct answer.
 
-8. **Saving to the wrong location.** Files go to `/Volumes/projects-1/leeds/research/leeds_players/` — always. Check the NAS is mounted first.
+### Phase 2 — WRITE (from the fact sheet ONLY)
 
-9. **Forgetting the Supabase database entry.** The markdown file alone is NOT complete. Every player MUST also have structured data entered into all 7 Supabase tables. The database is what makes the data queryable for "On This Day" posts and the website.
+Write the markdown bio using ONLY facts from your Phase 1 fact sheet. For every sentence you write, you must be able to point to the fact sheet entry and its source URL.
 
-10. **Wrong competition_type for friendlies.** Friendlies MUST go in as 'friendly', 'testimonial', or 'other_non_competitive'. If you put a friendly in as 'league' or a cup type, it will be counted as competitive and skew the totals. The is_competitive flag is auto-calculated from competition_type.
+**Decision trees for hallucination-prone fields:**
+
+**Parents (Section 4):**
+```
+Does the Wikipedia infobox contain a "Parent(s)" or "Father"/"Mother" field?
+├─ YES → Copy the names exactly as shown
+└─ NO → Write "Unknown" for both parents. Do not search elsewhere. Do not infer names from the player's surname.
+         "Unknown" is the correct and complete answer.
+```
+
+**Death (Section 12):**
+```
+Does the Wikipedia infobox contain a "Died" field?
+├─ YES → Use that date. Write Section 12.
+└─ NO → The player is alive. OMIT Section 12 entirely. Set date_of_death=null in DB.
+         Do NOT assume death based on age. Old ≠ dead.
+```
+
+**Clubs (Section 5):**
+```
+For each club you plan to list:
+  Does this club appear in the Transfermarkt career table you scraped?
+├─ YES → Include it
+└─ NO → Do NOT include it. Even if it "feels right." Even if Wikipedia mentions it in passing.
+         Transfermarkt career table is ground truth.
+```
+
+**Stats (Section 6a):**
+```
+Transfermarkt career table shows apps/goals per competition.
+  Copy these EXACTLY. Do not round, adjust, or "reconcile" with Wikipedia.
+  If Transfermarkt and Wikipedia disagree, use Transfermarkt and note the discrepancy.
+```
+
+**Honours (Section 9):**
+```
+For each honour you plan to list:
+  Can you point to the specific source URL where you read about this honour?
+├─ YES → Include it
+└─ NO → Do NOT include it. Invented honours are a documented hallucination pattern.
+```
+
+**Tournament results (Section 7):**
+```
+For each tournament result:
+  Did you verify the result (winner/loser/score) against the actual tournament page?
+├─ YES → Include it
+└─ NO → Do NOT guess. Getting a result backwards is a critical error.
+```
+
+### Phase 3 — DB INSERT (structured data)
+
+Insert into Supabase using the helper script. Follow the insertion order in the schema section above.
+
+**Before EACH POST, do a GET first:**
+```bash
+# Check if player already exists BEFORE creating
+python3 /mnt/nas/leeds/research/supabase_helper.py get players "last_name=eq.SURNAME"
+# If results exist, use the existing player_id. Do NOT create a duplicate.
+
+# Check if a career row already exists BEFORE inserting
+python3 /mnt/nas/leeds/research/supabase_helper.py check_dup player_career "player_id=eq.7&club_id=eq.1"
+```
+
+**DB-specific rules (these are SCHEMA CONSTRAINTS, not preferences):**
+- `player_stats.is_competitive` is GENERATED — do NOT include it in POST payloads
+- `player_honours.honour_type` only accepts `'club'` or `'individual'` — NOT `'international'`
+- `player_career.status` only accepts `'youth'`, `'senior_permanent'`, or `'manager'` — NOT `'senior'`
+- Parents ALWAYS get inserted — name="Unknown" if not documented
+
+### Phase 4 — VALIDATE (mandatory final gate)
+
+```bash
+python3 /mnt/nas/leeds/research/validate_bio.py --player-id <ID> --md-file /mnt/nas/leeds/research/leeds_players/<file>.md
+```
+
+If exit code is NOT 0:
+1. Read the errors printed
+2. Fix every single one
+3. Re-run the validator
+4. Repeat until exit 0
+
+**You CANNOT report "complete" until this returns exit 0.**
+
+## Core Principle
+
+**"Unknown" is better than wrong.** Paul has zero tolerance for fabricated data. A bio with gaps marked "Not publicly documented" is a good bio. A bio with plausible-sounding invented details is a failure. When in doubt, write "Unknown."
+
+## Common Pitfalls (observed hallucination patterns)
+
+| Pattern | Example | Prevention |
+|---|---|---|
+| Fabricated parent names | "Johannes Radebe", "Emily Radebe" | If not in Wikipedia infobox → "Unknown" |
+| Fabricated death date | Eddie Gray given 2024-11-17 death date | If no Wikipedia "Died" field → alive |
+| Invented club stint | Radebe at Bolton Wanderers | Transfermarkt career table = ground truth |
+| Reversed tournament result | "South Africa were 1996 AFCON runners-up" | Verify against tournament page |
+| Fabricated physical honour | "statue at Elland Road" | Each honour needs a source URL |
+| Duplicate player records | Eddie Gray had 3 DB rows | GET by last_name BEFORE creating |
+| Wrong honour_type | `'international'` (violates constraint) | Only `'club'` or `'individual'` |
+| Including is_competitive | Triggers 428C9 error | Omit from POST — it's generated |
+| "Gold standard" template note | Propagates across bios | Every bio just follows the standard template |
 
 ## Verification Checklist
 
 Before marking a bio complete:
 
-**Markdown file:**
-- [ ] File saved to `/Volumes/projects-1/leeds/research/leeds_players/firstname_surname.md`
-- [ ] All 12 sections present (omit Death section if player is alive)
-- [ ] Competitive and friendly stats are in SEPARATE sections (6a and 6b)
-- [ ] Friendly stats are NOT mixed into competitive totals
-- [ ] Career timeline covers EVERY club (not just Leeds)
-- [ ] All loans are clearly marked
-- [ ] Parent names are present or honestly noted as undocumented
-- [ ] Maximum 3 photos with descriptive alt text and source captions
-- [ ] Post-retirement career covered (or noted as still active)
-- [ ] Death details covered if deceased (date, cause, circumstances)
-- [ ] Sources section with full URLs
-- [ ] At least 3 sources cross-referenced
-- [ ] Source discrepancies documented where they exist
-- [ ] File visible in Finder at the NAS path
-- [ ] Read back the saved file to confirm it wrote correctly
+**Phase 1 (Scrape):**
+- [ ] Wikipedia full page scraped (URL saved)
+- [ ] Transfermarkt career stats page scraped (URL saved)
+- [ ] At least 1 additional source scraped
+- [ ] Fact sheet written with source URL per field
 
-**Supabase database (ALL required):**
-- [ ] Player row inserted into `players` table (capture player_id)
-- [ ] Parents inserted into `player_parents` (or noted as undocumented)
-- [ ] Any new clubs inserted into `clubs` (existing clubs reused)
-- [ ] All career stints inserted into `player_career` (correct status types)
-- [ ] All competitive stats inserted into `player_stats` (one row per season per competition)
-- [ ] Friendly stats inserted into `player_stats` with correct competition_type ('friendly'/'testimonial'/'other_non_competitive')
-- [ ] International career inserted into `international_career`
-- [ ] Honours inserted into `player_honours`
-- [ ] Verify data: query player_stats for the new player_id and confirm totals match the markdown file
+**Phase 2 (Write):**
+- [ ] Every fact in the markdown traces to a Phase 1 source
+- [ ] Parents are "Unknown" if not in sources (NOT invented)
+- [ ] Death section omitted if player is alive (NOT fabricated)
+- [ ] Clubs match Transfermarkt career table exactly
+- [ ] Competitive/friendly stats separated (6a/6b)
+- [ ] All 12 sections present (omit Death if alive)
+- [ ] Max 3 photos with source captions
+- [ ] Sources section with full URLs
+
+**Phase 3 (DB):**
+- [ ] Checked for existing player BEFORE creating (GET by last_name)
+- [ ] Player row inserted (player_id captured)
+- [ ] Parents inserted (Unknown if not documented)
+- [ ] Career entries for EVERY club (from Transfermarkt)
+- [ ] Stats inserted (is_competitive OMITTED from payload)
+- [ ] Honours inserted (honour_type is 'club' or 'individual' ONLY)
+- [ ] No duplicate rows anywhere (ran check_dup before each POST)
+
+**Phase 4 (Validate):**
+- [ ] **`validate_bio.py` returns exit 0 — NOT OPTIONAL**

@@ -173,13 +173,11 @@ When an LLM agent (e.g. billresearch) writes biographies or other research conte
 - **Fabricating physical honors** (e.g., claiming a statue at Elland Road that doesn't exist)
 - **Extending competition history** (e.g., claiming Champions League semi-final in a year the club wasn't in the competition)
 - **Plausible-but-wrong career details** (transfer fees, dates, caps that are close to reality but incorrect)
-- **Fabricating parent names** (e.g., "Johannes Radebe" and "Emily Radebe" — never documented in scraped Wikipedia)
-- **Impersonating a dead person** (e.g., fabricating a death date (2024-11-17) for a living player Eddie Gray)
-- **Creating duplicate player records** (e.g., generating two player rows for Eddie Gray with contradictory death data)
-- **Fabricating parent names** (e.g., "Johannes Radebe" and "Emily Radebe" — never documented)
-- **Impersonating a dead person** (e.g., fabricating a death date for a living player)
-- Using `honour_type='international'` (violates DB check constraint; only `'club'` and `'individual'` allowed)
-- Including `is_competitive` in `player_stats` POST payloads (violates generated column constraint)
+- **Fabricating parent names** (e.g., "Johannes Radebe" and "Emily Radebe" — never documented in scraped sources)
+- **Fabricating death dates for living players** (e.g., Eddie Gray given date_of_death=2024-11-17 while alive)
+- **Creating duplicate player records** (e.g., 3 rows for Eddie Gray with contradictory death data)
+- **Including `is_competitive` in `player_stats` POST payloads** (violates generated column constraint — `428C9` error)
+- **Using `honour_type='international'`** (violates check constraint — only `'club'` and `'individual'` allowed)
 
 ### Implementation
 
